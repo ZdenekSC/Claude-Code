@@ -6,6 +6,7 @@ import type {
   ConditionNodeData,
   InventoryNodeData,
   BattleNodeData,
+  LuckTestNodeData,
   EndNodeData,
   StartNodeData,
   InventoryAction,
@@ -46,6 +47,8 @@ export function PropertiesPanel() {
         return <InventoryNodeEditor node={selectedNode} />;
       case GameNodeType.BATTLE:
         return <BattleNodeEditor node={selectedNode} />;
+      case GameNodeType.LUCK_TEST:
+        return <LuckTestNodeEditor node={selectedNode} />;
       case GameNodeType.END:
         return <EndNodeEditor node={selectedNode} />;
       default:
@@ -659,6 +662,56 @@ function EndNodeEditor({ node }: { node: any }) {
           onChange={(e) => updateNode(node.id, { message: e.target.value })}
           className="w-full px-2 py-1 border border-gray-300 rounded h-32"
         />
+      </div>
+    </div>
+  );
+}
+
+function LuckTestNodeEditor({ node }: { node: any }) {
+  const { updateNode } = useGameStore();
+  const data = node.data as LuckTestNodeData;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-semibold mb-1">Label</label>
+        <input
+          type="text"
+          value={data.label}
+          onChange={(e) => updateNode(node.id, { label: e.target.value })}
+          className="w-full px-2 py-1 border border-gray-300 rounded"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold mb-1">Description</label>
+        <textarea
+          value={data.description}
+          onChange={(e) => updateNode(node.id, { description: e.target.value })}
+          className="w-full px-2 py-1 border border-gray-300 rounded h-20"
+          placeholder="What are you testing luck for?"
+        />
+      </div>
+      <div className="bg-green-50 p-3 rounded border border-green-200">
+        <label className="block text-sm font-semibold mb-1 text-green-700">Lucky Outcome</label>
+        <textarea
+          value={data.luckyOutcome}
+          onChange={(e) => updateNode(node.id, { luckyOutcome: e.target.value })}
+          className="w-full px-2 py-1 border border-gray-300 rounded h-16"
+          placeholder="What happens if lucky..."
+        />
+      </div>
+      <div className="bg-orange-50 p-3 rounded border border-orange-200">
+        <label className="block text-sm font-semibold mb-1 text-orange-700">Unlucky Outcome</label>
+        <textarea
+          value={data.unluckyOutcome}
+          onChange={(e) => updateNode(node.id, { unluckyOutcome: e.target.value })}
+          className="w-full px-2 py-1 border border-gray-300 rounded h-16"
+          placeholder="What happens if unlucky..."
+        />
+      </div>
+      <div className="text-xs text-gray-500 italic">
+        Note: Connect the green handle to the lucky path and orange handle to the unlucky path.
+        Player's LUCK will be reduced by 1 after testing.
       </div>
     </div>
   );
