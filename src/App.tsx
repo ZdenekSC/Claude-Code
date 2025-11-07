@@ -5,14 +5,14 @@ import { Toolbar } from './components/Toolbar';
 import { GameEditor } from './components/GameEditor';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { ItemManager } from './components/ItemManager';
-import { GamePlayback } from './components/GamePlayback';
+import { BookPlayback } from './components/BookPlayback';
 
 function App() {
   const { mode } = useGameStore();
   const [showItemManager, setShowItemManager] = useState(false);
 
   if (mode === 'playback') {
-    return <GamePlayback />;
+    return <BookPlayback />;
   }
 
   return (
