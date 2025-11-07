@@ -4,4 +4,5 @@ export { ChoiceNode } from './ChoiceNode';
 export { ConditionNode } from './ConditionNode';
 export { InventoryNode } from './InventoryNode';
 export { BattleNode } from './BattleNode';
+export { LuckTestNode } from './LuckTestNode';
 export { EndNode } from './EndNode';

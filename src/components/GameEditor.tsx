@@ -17,6 +17,7 @@ import {
   ConditionNode,
   InventoryNode,
   BattleNode,
+  LuckTestNode,
   EndNode,
 } from '../nodes';
 
@@ -37,6 +38,7 @@ export function GameEditor() {
       [GameNodeType.CONDITION]: ConditionNode,
       [GameNodeType.INVENTORY]: InventoryNode,
       [GameNodeType.BATTLE]: BattleNode,
+      [GameNodeType.LUCK_TEST]: LuckTestNode,
       [GameNodeType.END]: EndNode,
     }),
     []

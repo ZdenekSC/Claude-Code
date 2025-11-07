@@ -8,6 +8,7 @@ export enum GameNodeType {
   INVENTORY = 'inventoryNode',
   CONDITION = 'conditionNode',
   BATTLE = 'battleNode',
+  LUCK_TEST = 'luckTestNode',
   END = 'endNode',
 }
 
@@ -24,6 +25,16 @@ export interface PlayerStats {
   health: number;
   maxHealth: number;
   gold: number;
+
+  // Fighting Fantasy attributes
+  skill: number;          // SKILL (1D6+6)
+  stamina: number;        // STAMINA (2D6+12) - current
+  maxStamina: number;     // Maximum STAMINA
+  luck: number;           // LUCK (1D6+6) - current
+  initialLuck: number;    // Initial LUCK for reference
+  provisions: number;     // Food for healing (restores 4 STAMINA)
+
+  // Legacy/custom attributes
   skills: { [key: string]: number };
   customAttributes: { [key: string]: number };
 }
@@ -69,6 +80,11 @@ export interface BattleConfig {
   playerAttack: number;
   victoryNodeId?: string;
   defeatNodeId?: string;
+
+  // Fighting Fantasy combat
+  useFightingFantasyRules?: boolean; // If true, use FF combat system
+  enemySkill?: number; // Enemy SKILL for FF combat
+  enemyStamina?: number; // Enemy STAMINA for FF combat
 }
 
 // Base node data that all nodes share
@@ -124,6 +140,15 @@ export interface EndNodeData extends BaseNodeData {
   message: string;
 }
 
+// Luck Test node data (Fighting Fantasy mechanic)
+export interface LuckTestNodeData extends BaseNodeData {
+  description: string; // What you're testing luck for
+  luckyOutcome: string; // What happens if lucky
+  unluckyOutcome: string; // What happens if unlucky
+  luckyStatMods?: StatModification[]; // Stat changes if lucky
+  unluckyStatMods?: StatModification[]; // Stat changes if unlucky
+}
+
 // Union type for all node data types
 export type GameNodeData =
   | StoryNodeData
@@ -131,6 +156,7 @@ export type GameNodeData =
   | InventoryNodeData
   | ConditionNodeData
   | BattleNodeData
+  | LuckTestNodeData
   | StartNodeData
   | EndNodeData;
 

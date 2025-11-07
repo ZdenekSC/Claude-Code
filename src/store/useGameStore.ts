@@ -64,6 +64,16 @@ const defaultStats: PlayerStats = {
   health: 100,
   maxHealth: 100,
   gold: 0,
+
+  // Fighting Fantasy attributes (default values)
+  skill: 9,           // SKILL (1D6+6 = 7-12, defaulting to average 9)
+  stamina: 18,        // STAMINA (2D6+12 = 14-24, defaulting to average 18)
+  maxStamina: 18,
+  luck: 9,            // LUCK (1D6+6 = 7-12, defaulting to average 9)
+  initialLuck: 9,
+  provisions: 10,     // Starting provisions
+
+  // Legacy/custom attributes
   skills: {},
   customAttributes: {},
 };

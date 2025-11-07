@@ -7,6 +7,7 @@ import type {
   ConditionNodeData,
   InventoryNodeData,
   BattleNodeData,
+  LuckTestNodeData,
   EndNodeData,
 } from '../types';
 import { downloadHTML } from '../utils/exportToHTML';
@@ -66,6 +67,17 @@ export function Toolbar() {
             playerAttack: 15,
           },
         } as BattleNodeData;
+        break;
+
+      case GameNodeType.LUCK_TEST:
+        data = {
+          label: 'Test Your Luck',
+          description: 'A dangerous situation...',
+          luckyOutcome: 'You succeed!',
+          unluckyOutcome: 'You fail!',
+          luckyStatMods: [],
+          unluckyStatMods: [],
+        } as LuckTestNodeData;
         break;
 
       case GameNodeType.END:
@@ -165,6 +177,12 @@ export function Toolbar() {
           className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 rounded transition"
         >
           ⚔️ Battle
+        </button>
+        <button
+          onClick={() => createNode(GameNodeType.LUCK_TEST)}
+          className="px-3 py-1 text-sm bg-green-100 hover:bg-green-200 rounded transition"
+        >
+          🍀 Luck Test
         </button>
         <button
           onClick={() => createNode(GameNodeType.END)}
