@@ -88,3 +88,65 @@ export async function loadChampions(cacheDir: string): Promise<ChampionIndex> {
     return ChampionIndex.fromDdragon(JSON.parse(cached) as DdragonChampionJson);
   }
 }
+
+/** A champion's abilities, used to ground AI tips in the real kit. */
+export interface ChampionKit {
+  passive: { name: string; description: string };
+  spells: Array<{ key: Skill; name: string; description: string; cooldown: string }>;
+}
+
+interface DdragonChampionDetailJson {
+  data: Record<
+    string,
+    {
+      passive: { name: string; description: string };
+      spells: Array<{ name: string; description: string; cooldownBurn: string }>;
+    }
+  >;
+}
+
+/** Data Dragon descriptions contain HTML-like markup (<br>, <status>, ...). */
+export function stripMarkup(text: string): string {
+  return text
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function parseKit(json: DdragonChampionDetailJson, id: string): ChampionKit | null {
+  const c = json.data[id];
+  if (!c) return null;
+  const keys: Skill[] = ['Q', 'W', 'E', 'R'];
+  return {
+    passive: { name: c.passive.name, description: stripMarkup(c.passive.description) },
+    spells: c.spells.slice(0, 4).map((s, i) => ({
+      key: keys[i],
+      name: s.name,
+      description: stripMarkup(s.description),
+      cooldown: s.cooldownBurn,
+    })),
+  };
+}
+
+/** Downloads (and caches on disk) one champion's ability descriptions. */
+export async function loadChampionKit(version: string, id: string, cacheDir: string): Promise<ChampionKit | null> {
+  const cacheFile = path.join(cacheDir, 'kits', `${version}-${id}.json`);
+  let raw = await fs.readFile(cacheFile, 'utf8').catch(() => null);
+  if (!raw) {
+    try {
+      const res = await fetch(`${DDRAGON}/cdn/${version}/data/en_US/champion/${id}.json`);
+      if (!res.ok) return null;
+      raw = await res.text();
+      await fs.mkdir(path.dirname(cacheFile), { recursive: true });
+      await fs.writeFile(cacheFile, raw);
+    } catch {
+      return null;
+    }
+  }
+  return parseKit(JSON.parse(raw) as DdragonChampionDetailJson, id);
+}
+
+export function championIconUrl(version: string, id: string): string {
+  return `${DDRAGON}/cdn/${version}/img/champion/${id}.png`;
+}

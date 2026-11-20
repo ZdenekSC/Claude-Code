@@ -5,6 +5,13 @@ import type { DraftConfig } from '../core/draft';
 export interface CoachConfig extends DraftConfig {
   voice: boolean;
   toggleHotkey: string;
+  ai: {
+    enabled: boolean;
+    /** Claude model id. "claude-haiku-5-5" is far cheaper per tip. */
+    model: string;
+    /** Optional; the ANTHROPIC_API_KEY environment variable is used when this is empty. */
+    apiKey?: string;
+  };
 }
 
 const DEFAULTS: CoachConfig = {
@@ -12,6 +19,7 @@ const DEFAULTS: CoachConfig = {
   bans: {},
   voice: true,
   toggleHotkey: 'CommandOrControl+Shift+L',
+  ai: { enabled: true, model: 'claude-opus-5-5' },
 };
 
 /**
@@ -26,5 +34,6 @@ export async function loadConfig(userDataDir: string, examplePath: string): Prom
     await fs.mkdir(userDataDir, { recursive: true });
     await fs.writeFile(file, raw);
   }
-  return { config: { ...DEFAULTS, ...(JSON.parse(raw) as Partial<CoachConfig>) }, file };
+  const parsed = JSON.parse(raw) as Partial<CoachConfig>;
+  return { config: { ...DEFAULTS, ...parsed, ai: { ...DEFAULTS.ai, ...parsed.ai } }, file };
 }

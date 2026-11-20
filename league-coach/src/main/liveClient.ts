@@ -15,6 +15,7 @@ export interface LiveGameData {
     summonerName?: string;
     championName: string;
     rawChampionName: string;
+    position?: string; // "TOP" | "JUNGLE" | "MIDDLE" | "BOTTOM" | "UTILITY" | ""
     team: 'ORDER' | 'CHAOS';
   }>;
   events: { Events: LiveEvent[] };

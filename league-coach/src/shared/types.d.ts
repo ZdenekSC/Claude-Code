@@ -32,12 +32,30 @@ interface GameAdvice {
   skillTip: string | null;
 }
 
+interface RosterEntry {
+  id: string; // Data Dragon champion id
+  name: string;
+  icon: string; // champion portrait URL
+  role: Lane | null;
+  isMe: boolean;
+}
+
+interface Roster {
+  allies: RosterEntry[];
+  enemies: RosterEntry[];
+}
+
 interface CoachApi {
   onPhase(cb: (phase: CoachPhase) => void): void;
   onDraft(cb: (advice: DraftAdvice | null) => void): void;
   onGame(cb: (advice: GameAdvice) => void): void;
   onSpeak(cb: (text: string) => void): void;
   onStatus(cb: (text: string) => void): void;
+  onRoster(cb: (roster: Roster) => void): void;
+  /** Asks the AI about a champion in the current roster; resolves to the tip text. */
+  askTip(championId: string): Promise<string>;
+  /** Overlay is click-through except while the mouse is over the panel. */
+  setInteractive(interactive: boolean): void;
 }
 
 interface Window {

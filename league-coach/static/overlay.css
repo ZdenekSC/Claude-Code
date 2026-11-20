@@ -93,3 +93,55 @@ footer {
   font-size: 10px;
   color: var(--muted);
 }
+
+.champs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.champ {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #1e2328;
+  color: var(--text);
+  font: 9px/1 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.champ img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.champ.me {
+  border-color: var(--up);
+}
+
+.champ.loading {
+  opacity: 0.5;
+}
+
+.champ:hover,
+.champ:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tip {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent);
+  background: rgba(200, 170, 110, 0.08);
+}
+
+.tip.error {
+  border-left-color: #f87171;
+  color: #fca5a5;
+}

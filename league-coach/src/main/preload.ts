@@ -12,6 +12,9 @@ const api: CoachApi = {
   onGame: listen<GameAdvice>('game'),
   onSpeak: listen<string>('speak'),
   onStatus: listen<string>('status'),
+  onRoster: listen<Roster>('roster'),
+  askTip: (championId) => ipcRenderer.invoke('askTip', championId) as Promise<string>,
+  setInteractive: (interactive) => ipcRenderer.send('interactive', interactive),
 };
 
 contextBridge.exposeInMainWorld('coach', api);

@@ -30,6 +30,56 @@
     return el;
   }
 
+  // The overlay window ignores the mouse except while it's over the panel.
+  const panel = $('panel');
+  panel.addEventListener('mouseenter', () => window.coach.setInteractive(true));
+  panel.addEventListener('mouseleave', () => window.coach.setInteractive(false));
+
+  let tipRequest = 0;
+  async function askTip(entry: RosterEntry, button: HTMLButtonElement): Promise<void> {
+    const request = ++tipRequest;
+    const tip = $('tip');
+    tip.hidden = false;
+    tip.className = 'tip';
+    tip.textContent = `Asking about ${entry.name}…`;
+    button.classList.add('loading');
+    try {
+      const text = await window.coach.askTip(entry.id);
+      if (request !== tipRequest) return; // a newer click won
+      tip.textContent = `${entry.name}: ${text}`;
+      speechSynthesis.cancel();
+      speak(text);
+    } catch (err) {
+      if (request !== tipRequest) return;
+      tip.className = 'tip error';
+      // ipcRenderer.invoke prefixes "Error invoking remote method 'askTip': Error: "
+      tip.textContent = String((err as Error).message ?? err).replace(/^.*?Error: /, '');
+    } finally {
+      button.classList.remove('loading');
+    }
+  }
+
+  function champButton(entry: RosterEntry, relation: string): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.className = entry.isMe ? 'champ me' : 'champ';
+    button.title = `${entry.name}${entry.isMe ? ' (you)' : ''} — click for a tip`;
+    button.setAttribute('aria-label', `Tip about ${relation} ${entry.name}`);
+    const img = document.createElement('img');
+    img.src = entry.icon;
+    img.alt = '';
+    img.onerror = () => img.replaceWith(entry.name.slice(0, 6)); // offline: show the name instead
+    button.appendChild(img);
+    button.addEventListener('click', () => void askTip(entry, button));
+    return button;
+  }
+
+  window.coach.onRoster((roster) => {
+    $('roster').hidden = !roster.allies.length && !roster.enemies.length;
+    fill($('allies'), roster.allies.map((e) => champButton(e, 'teammate')));
+    fill($('enemies'), roster.enemies.map((e) => champButton(e, 'enemy')));
+    if (!roster.allies.length && !roster.enemies.length) $('tip').hidden = true;
+  });
+
   function showSection(which: 'draft' | 'game' | null): void {
     $('draft').hidden = which !== 'draft';
     $('game').hidden = which !== 'game';
@@ -66,11 +116,12 @@
   });
 
   // Free, offline voice using the Windows built-in speech engine.
-  window.coach.onSpeak((text) => {
+  function speak(text: string): void {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.05;
     speechSynthesis.speak(utterance);
-  });
+  }
+  window.coach.onSpeak(speak);
 
   window.coach.onStatus((text) => {
     $('status').textContent = text;

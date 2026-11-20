@@ -8,5 +8,10 @@
     "bottom": ["Draven"]
   },
   "voice": true,
+  "ai": {
+    "enabled": true,
+    "model": "claude-opus-5-5",
+    "apiKey": ""
+  },
   "toggleHotkey": "CommandOrControl+Shift+L"
 }

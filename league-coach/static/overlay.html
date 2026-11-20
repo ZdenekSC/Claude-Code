@@ -2,13 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://ddragon.leagueoflegends.com" />
     <title>League Coach</title>
     <link rel="stylesheet" href="overlay.css" />
   </head>
   <body>
     <aside id="panel">
       <header>League Coach <span id="phase">idle</span></header>
+      <section id="roster" hidden>
+        <h2>Your team</h2>
+        <div id="allies" class="champs"></div>
+        <h2>Enemies</h2>
+        <div id="enemies" class="champs"></div>
+        <p id="tip" class="tip" hidden></p>
+      </section>
       <section id="draft" hidden>
         <h2>Ban suggestions</h2>
         <ul id="bans"></ul>

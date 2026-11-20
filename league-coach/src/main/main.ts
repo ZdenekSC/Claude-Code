@@ -1,10 +1,11 @@
-import { app, BrowserWindow, globalShortcut, screen } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron';
 import * as path from 'path';
 import { loadChampions } from '../core/champions';
 import type { CounterTable } from '../core/draft';
 import type { BasicSkill } from '../core/skills';
 import counters from '../data/counters.json';
 import skillOrders from '../data/skill-orders.json';
+import { AiCoach } from './aiCoach';
 import { Coach } from './coach';
 import { loadConfig } from './config';
 
@@ -30,7 +31,7 @@ function createOverlay(): BrowserWindow {
   });
   // Stay above League (which must run in Borderless mode) and let clicks pass through to the game.
   win.setAlwaysOnTop(true, 'screen-saver');
-  win.setIgnoreMouseEvents(true);
+  win.setIgnoreMouseEvents(true, { forward: true });
   win.loadFile(path.join(ROOT, 'static', 'overlay.html'));
   return win;
 }
@@ -48,9 +49,24 @@ async function main(): Promise<void> {
 
   overlay.webContents.once('did-finish-load', () => send('status', `Config: ${file}`));
 
-  const champions = await loadChampions(path.join(app.getPath('userData'), 'cache'));
-  const coach = new Coach(champions, config, counters as CounterTable, skillOrders as Record<string, BasicSkill[]>);
-  for (const channel of ['phase', 'draft', 'game', 'speak', 'status']) {
+  // Click-through except while the mouse is over the panel ('forward' keeps mouse-move events flowing).
+  ipcMain.on('interactive', (_event, interactive: boolean) => {
+    overlay.setIgnoreMouseEvents(!interactive, { forward: true });
+  });
+
+  const cacheDir = path.join(app.getPath('userData'), 'cache');
+  const champions = await loadChampions(cacheDir);
+  const ai = config.ai.enabled ? new AiCoach({ model: config.ai.model, apiKey: config.ai.apiKey || undefined }) : null;
+  const coach = new Coach(
+    champions,
+    config,
+    counters as CounterTable,
+    skillOrders as Record<string, BasicSkill[]>,
+    cacheDir,
+    ai,
+  );
+  ipcMain.handle('askTip', (_event, championId: string) => coach.tipFor(String(championId)));
+  for (const channel of ['phase', 'draft', 'game', 'roster', 'speak', 'status']) {
     coach.on(channel, (payload) => send(channel, payload));
   }
   coach.start();
