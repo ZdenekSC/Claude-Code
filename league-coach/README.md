@@ -6,7 +6,13 @@ A Windows overlay for League of Legends that:
 - **In game:** shows objective timers (Dragon / Elder, Voidgrubs, Rift Herald, Atakhan, Baron) with voice callouts one minute before a spawn and when it spawns.
 - **In game:** reminds you which item categories fit the enemy team (magic resist vs armor, anti-heal, penetration).
 - **In game:** suggests which skill to level next, using a common max order for your champion.
-- **AI tips (champ select and in game):** click any teammate or enemy portrait in the overlay to get a short spoken tip, for example *"Careful, Leona's E roots you, then she can stun you with Q"* or *"Thresh is an engage support, so stay close behind him and avoid shoving."*
+- **AI tips (champ select and in game):** click any portrait in the overlay for a short spoken tip that takes all ten champions into account:
+  - **Your lane opponent:** how to play the lane, with trading windows from their cooldowns. *"When Darius's Q, Decimate, is on cooldown, go in with Decisive Strike and Judgment, then back off before five bleed stacks."*
+  - **Other enemies:** their threat and how it combines with their team (e.g. Leona's root into a Sejuani gank).
+  - **Teammates:** synergy and how to play with them.
+  - **Yourself:** your lane or game plan.
+  - In game, each tip ends with **one next item** chosen for the whole enemy team and what they're building.
+- **Natural voice:** callouts and tips are read by Kokoro, a neural voice that runs locally and for free. It falls back to the Windows voice.
 
 ## Requirements
 
@@ -35,13 +41,29 @@ Tips use Claude through the Anthropic API, so you need an API key from console.a
 - set the `ANTHROPIC_API_KEY` environment variable (recommended), or
 - put it in `config.json` under `"ai": { "apiKey": "..." }`. That file is stored as plain text in your user folder.
 
-`"ai": { "model": ... }` defaults to `claude-opus-5-5` (about half a cent per tip). Set it to `claude-haiku-5-5` for roughly 1/40th of the cost. `"ai": { "enabled": false }` turns tips off.
+`"ai": { "model": ... }` defaults to `claude-opus-5-5`. `"ai": { "enabled": false }` turns tips off.
+
+**Cost (measured):** the first tip in a game is about **$0.05**, because it sends every champion's abilities and the item list. Later tips within 5 minutes reuse that cached part, about **$0.01** each. A game with ~10 clicks costs roughly $0.10–0.15, so $100 of credit covers several hundred games. Set `"model": "claude-haiku-5-5"` for roughly 1/40th of that cost.
 
 How tips are made:
-- The prompt includes the clicked champion's **real ability descriptions from Data Dragon**, both teams, your champion and role, and the game minute. The AI is told to describe only abilities from that list, so it doesn't invent a stun that doesn't exist.
-- Each tip is cached per matchup for the current game: clicking the same champion again is instant and free.
+- The cached part of the prompt has all ten champions with their **real ability descriptions and cooldowns from Data Dragon**, your lane opponent(s), and the current list of finished items. The changing part has the game minute, everyone's level, score and items, and your gold.
+- The AI only describes listed abilities and recommends items by exact name from the list, so it doesn't invent a stun or an item that doesn't exist.
+- A tip is reused for repeat clicks until someone buys an item. After that, clicking again gives fresh advice.
 - If the model declines a request, the API retries on a fallback model within the same call (`fallbacks: "default"`).
 - The overlay ignores the mouse except while the pointer is over the panel. Clicking a portrait doesn't take focus away from League.
+
+### Voice (Kokoro)
+
+Kokoro (82M parameters, `kokoro-js`) runs on your CPU in a background thread. On first run it downloads its model (~90 MB) from Hugging Face into `%APPDATA%\league-coach\models`, and the overlay footer shows the progress. Until then, and if it ever fails, the Windows voice is used.
+
+| Setting in `config.json` | Default | |
+|---|---|---|
+| `voiceEngine` | `"kokoro"` | `"system"` for the Windows voice |
+| `kokoroVoice` | `"af_heart"` | Also try `af_bella`, `am_michael`, `am_fenrir`, `bf_emma` (British), `bm_george` |
+| `voiceSpeed` | `1.1` | |
+| `voice` | `true` | `false` mutes everything |
+
+Clicking a portrait interrupts whatever is being said. Callouts queue up behind each other.
 
 ### Try the overlay without a game
 
@@ -79,7 +101,7 @@ src/renderer/   overlay script; static/ holds its HTML and CSS
 scripts/        mock Live Client server
 ```
 
-Voice uses the Windows built-in speech engine, so it's free and offline. You can swap in a neural TTS model later in `src/renderer/overlay.ts` (`onSpeak`).
+Voice: `src/main/voice.ts` decides between Kokoro (`src/main/ttsWorker.ts`, a worker thread) and the Windows voice. The overlay plays Kokoro's audio with Web Audio.
 
 ## Riot policy notes
 
@@ -97,4 +119,4 @@ The design follows Riot's third-party app rules as publicly reported (verify on 
 - Spawn timings in `objectives.ts` must be checked each season.
 - Event names for Voidgrubs and Atakhan kills (`HordeKill`, `AtakhanKill`) are unverified. Until confirmed, those timers hide 4 minutes after spawning.
 - AI tips can be wrong. They're grounded in Data Dragon ability text, but they can still misjudge a matchup.
-- Voice is the Windows built-in engine. A neural TTS (e.g. Kokoro, run locally) would sound much better for AI tips.
+- Kokoro hasn't been heard on a real PC yet: its model download was blocked in the build environment. Its loading, fallback and interruption logic are tested.

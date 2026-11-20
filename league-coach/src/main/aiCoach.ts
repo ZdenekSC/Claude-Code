@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { buildTipPrompt, TIP_SYSTEM_PROMPT, TipContext, tipCacheKey } from '../core/tips';
+import { buildGameContext, buildQuestion, TIP_SYSTEM_PROMPT, TipContext, tipCacheKey } from '../core/tips';
 
 export interface AiSettings {
   /** Claude model id. */
@@ -44,9 +44,18 @@ export class AiCoach {
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
         system: TIP_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: buildTipPrompt(ctx) }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              // Same for every click in a game (all kits + item list): cached, so repeat clicks cost far less.
+              { type: 'text', text: buildGameContext(ctx), cache_control: { type: 'ephemeral' } },
+              { type: 'text', text: buildQuestion(ctx) },
+            ],
+          },
+        ],
       });
-      if (response.stop_reason === 'refusal') return `No tip available for ${ctx.target.champion} right now.`;
+      if (response.stop_reason === 'refusal') return `No tip available for ${ctx.target} right now.`;
       const text = response.content
         .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
         .map((b) => b.text)

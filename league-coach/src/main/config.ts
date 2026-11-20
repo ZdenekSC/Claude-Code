@@ -3,7 +3,13 @@ import * as path from 'path';
 import type { DraftConfig } from '../core/draft';
 
 export interface CoachConfig extends DraftConfig {
+  /** Spoken callouts and tips on/off. */
   voice: boolean;
+  /** "kokoro" (natural, runs locally, ~90 MB download on first run) or "system" (Windows voice). */
+  voiceEngine: 'kokoro' | 'system';
+  /** Kokoro voice: af_heart, af_bella, am_michael, am_fenrir, bf_emma, bm_george, ... */
+  kokoroVoice: string;
+  voiceSpeed: number;
   toggleHotkey: string;
   ai: {
     enabled: boolean;
@@ -18,6 +24,9 @@ const DEFAULTS: CoachConfig = {
   pools: {},
   bans: {},
   voice: true,
+  voiceEngine: 'kokoro',
+  kokoroVoice: 'af_heart',
+  voiceSpeed: 1.1,
   toggleHotkey: 'CommandOrControl+Shift+L',
   ai: { enabled: true, model: 'claude-opus-5-5' },
 };

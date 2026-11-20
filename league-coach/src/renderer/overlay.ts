@@ -46,9 +46,7 @@
     try {
       const text = await window.coach.askTip(entry.id);
       if (request !== tipRequest) return; // a newer click won
-      tip.textContent = `${entry.name}: ${text}`;
-      speechSynthesis.cancel();
-      speak(text);
+      tip.textContent = `${entry.name}: ${text}`; // the main process speaks it
     } catch (err) {
       if (request !== tipRequest) return;
       tip.className = 'tip error';
@@ -115,13 +113,41 @@
     fill($('builds'), advice.buildTips.map((t) => li(t)));
   });
 
-  // Free, offline voice using the Windows built-in speech engine.
-  function speak(text: string): void {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.05;
-    speechSynthesis.speak(utterance);
+  // Voice: Kokoro audio chunks are queued back to back with Web Audio;
+  // the Windows voice (speechSynthesis) is used while Kokoro is unavailable.
+  let audioContext: AudioContext | null = null;
+  let playing: AudioBufferSourceNode[] = [];
+  let nextStart = 0;
+
+  function stopVoice(): void {
+    speechSynthesis.cancel();
+    for (const source of playing) source.stop();
+    playing = [];
+    nextStart = 0;
   }
-  window.coach.onSpeak(speak);
+
+  function playChunk(samples: Float32Array, sampleRate: number): void {
+    audioContext ??= new AudioContext();
+    const buffer = audioContext.createBuffer(1, samples.length, sampleRate);
+    buffer.copyToChannel(samples as Float32Array<ArrayBuffer>, 0);
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    const startAt = Math.max(audioContext.currentTime + 0.02, nextStart);
+    source.start(startAt);
+    nextStart = startAt + buffer.duration;
+    playing.push(source);
+    source.onended = () => (playing = playing.filter((s) => s !== source));
+  }
+
+  window.coach.onVoice((output) => {
+    if (output.kind === 'stop') return stopVoice();
+    if (output.interrupt) stopVoice();
+    if (output.kind === 'audio') return playChunk(output.samples, output.sampleRate);
+    const utterance = new SpeechSynthesisUtterance(output.text);
+    utterance.rate = output.speed;
+    speechSynthesis.speak(utterance);
+  });
 
   window.coach.onStatus((text) => {
     $('status').textContent = text;

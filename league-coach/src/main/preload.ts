@@ -10,7 +10,7 @@ const api: CoachApi = {
   onPhase: listen<CoachPhase>('phase'),
   onDraft: listen<DraftAdvice | null>('draft'),
   onGame: listen<GameAdvice>('game'),
-  onSpeak: listen<string>('speak'),
+  onVoice: listen<VoiceOutput>('voice'),
   onStatus: listen<string>('status'),
   onRoster: listen<Roster>('roster'),
   askTip: (championId) => ipcRenderer.invoke('askTip', championId) as Promise<string>,

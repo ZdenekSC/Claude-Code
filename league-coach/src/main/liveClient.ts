@@ -8,6 +8,7 @@ export interface LiveGameData {
     riotId?: string;
     summonerName?: string;
     level: number;
+    currentGold?: number;
     abilities: Partial<Record<Skill, { abilityLevel: number }>>;
   };
   allPlayers: Array<{
@@ -17,6 +18,9 @@ export interface LiveGameData {
     rawChampionName: string;
     position?: string; // "TOP" | "JUNGLE" | "MIDDLE" | "BOTTOM" | "UTILITY" | ""
     team: 'ORDER' | 'CHAOS';
+    level?: number;
+    items?: Array<{ displayName: string; itemID: number; consumable?: boolean }>;
+    scores?: { kills: number; deaths: number; assists: number };
   }>;
   events: { Events: LiveEvent[] };
   gameData: { gameTime: number; gameMode: string };

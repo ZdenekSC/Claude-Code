@@ -150,3 +150,64 @@ export async function loadChampionKit(version: string, id: string, cacheDir: str
 export function championIconUrl(version: string, id: string): string {
   return `${DDRAGON}/cdn/${version}/img/champion/${id}.png`;
 }
+
+/** A finished item the AI may recommend (names come from Data Dragon so they're always current). */
+export interface CatalogItem {
+  name: string;
+  tags: string[];
+  gold: number;
+}
+
+interface DdragonItemJson {
+  data: Record<
+    string,
+    {
+      name: string;
+      tags?: string[];
+      into?: string[];
+      requiredChampion?: string;
+      requiredAlly?: string;
+      inStore?: boolean;
+      consumed?: boolean;
+      maps?: Record<string, boolean>;
+      gold: { total: number; purchasable: boolean };
+    }
+  >;
+}
+
+/** Summoner's Rift items you can actually finish: legendaries and upgraded boots. */
+export function parseItemCatalog(json: DdragonItemJson): CatalogItem[] {
+  const seen = new Set<string>();
+  const items: CatalogItem[] = [];
+  for (const item of Object.values(json.data)) {
+    const tags = item.tags ?? [];
+    const finished = !item.into || item.into.length === 0;
+    const onRift = item.maps?.['11'] !== false;
+    const buyable = item.gold.purchasable && item.inStore !== false && !item.consumed;
+    const special = item.requiredChampion || item.requiredAlly;
+    const relevant = item.gold.total >= 2200 || (tags.includes('Boots') && item.gold.total > 300);
+    const name = stripMarkup(item.name);
+    if (finished && onRift && buyable && !special && relevant && !seen.has(name)) {
+      seen.add(name);
+      items.push({ name, tags, gold: item.gold.total });
+    }
+  }
+  return items.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function loadItemCatalog(version: string, cacheDir: string): Promise<CatalogItem[]> {
+  const cacheFile = path.join(cacheDir, `items-${version}.json`);
+  let raw = await fs.readFile(cacheFile, 'utf8').catch(() => null);
+  if (!raw) {
+    try {
+      const res = await fetch(`${DDRAGON}/cdn/${version}/data/en_US/item.json`);
+      if (!res.ok) return [];
+      raw = await res.text();
+      await fs.mkdir(cacheDir, { recursive: true });
+      await fs.writeFile(cacheFile, raw);
+    } catch {
+      return [];
+    }
+  }
+  return parseItemCatalog(JSON.parse(raw) as DdragonItemJson);
+}

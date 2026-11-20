@@ -8,8 +8,12 @@ import skillOrders from '../data/skill-orders.json';
 import { AiCoach } from './aiCoach';
 import { Coach } from './coach';
 import { loadConfig } from './config';
+import { Voice } from './voice';
 
 const ROOT = path.join(__dirname, '..', '..');
+
+// Callouts must be able to play before the user has clicked anything in the overlay.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 function createOverlay(): BrowserWindow {
   const { bounds } = screen.getPrimaryDisplay();
@@ -65,8 +69,21 @@ async function main(): Promise<void> {
     cacheDir,
     ai,
   );
-  ipcMain.handle('askTip', (_event, championId: string) => coach.tipFor(String(championId)));
-  for (const channel of ['phase', 'draft', 'game', 'roster', 'speak', 'status']) {
+  const voice = new Voice(
+    { enabled: config.voice, engine: config.voiceEngine, kokoroVoice: config.kokoroVoice, speed: config.voiceSpeed },
+    path.join(app.getPath('userData'), 'models'),
+  );
+  voice.on('output', (output) => send('voice', output));
+  voice.on('status', (text) => send('status', text));
+  voice.start();
+
+  ipcMain.handle('askTip', async (_event, championId: string) => {
+    const tip = await coach.tipFor(String(championId));
+    voice.say(tip, true); // a tip click interrupts whatever is being said
+    return tip;
+  });
+  coach.on('speak', (text: string) => voice.say(text));
+  for (const channel of ['phase', 'draft', 'game', 'roster', 'status']) {
     coach.on(channel, (payload) => send(channel, payload));
   }
   coach.start();
@@ -74,6 +91,7 @@ async function main(): Promise<void> {
 
   app.on('will-quit', () => {
     coach.stop();
+    voice.stop();
     globalShortcut.unregisterAll();
   });
 }

@@ -1,10 +1,10 @@
 import { EventEmitter } from 'events';
 import { buildTips } from '../core/builds';
-import { championIconUrl, ChampionIndex, ChampionInfo, loadChampionKit } from '../core/champions';
+import { CatalogItem, championIconUrl, ChampionIndex, ChampionInfo, loadChampionKit, loadItemCatalog } from '../core/champions';
 import { ChampSelectSession, CounterTable, suggestDraft } from '../core/draft';
 import { CalloutTracker, computeTimers } from '../core/objectives';
 import { BasicSkill, skillTip } from '../core/skills';
-import type { TipContext } from '../core/tips';
+import type { TipChampion, TipContext } from '../core/tips';
 import type { AiCoach } from './aiCoach';
 import type { CoachConfig } from './config';
 import { LcuWatcher } from './lcu';
@@ -33,6 +33,10 @@ export class Coach extends EventEmitter {
   private roster: Roster = { allies: [], enemies: [] };
   private rosterJson = JSON.stringify(this.roster);
   private gameTime = 0;
+  private myGold: number | undefined;
+  /** Per-champion in-game state (level, score, items), kept out of the roster so portraits don't re-render. */
+  private liveState = new Map<string, Pick<TipChampion, 'level' | 'kda' | 'items'>>();
+  private itemCatalog: Promise<CatalogItem[]> | null = null;
 
   constructor(
     private readonly champions: ChampionIndex,
@@ -67,26 +71,36 @@ export class Coach extends EventEmitter {
     if (this.pollTimer) clearInterval(this.pollTimer);
   }
 
-  /** AI tip about a champion currently shown in the roster. */
+  /** AI tip about a champion currently shown in the roster, using the whole game as context. */
   async tipFor(championId: string): Promise<string> {
     if (!this.ai) throw new Error('AI tips are turned off in config.json.');
-    const all = [...this.roster.allies, ...this.roster.enemies];
-    const target = all.find((e) => e.id === championId);
+    const entries = [
+      ...this.roster.allies.map((e) => ({ e, relation: e.isMe ? ('me' as const) : ('ally' as const) })),
+      ...this.roster.enemies.map((e) => ({ e, relation: 'enemy' as const })),
+    ];
+    const target = entries.find(({ e }) => e.id === championId);
     if (!target) throw new Error('That champion is not in this game.');
-    const me = this.roster.allies.find((e) => e.isMe);
-    const kit = await loadChampionKit(this.champions.version, target.id, this.cacheDir);
+
+    this.itemCatalog ??= loadItemCatalog(this.champions.version, this.cacheDir);
+    const [itemCatalog, kits] = await Promise.all([
+      this.itemCatalog,
+      Promise.all(entries.map(({ e }) => loadChampionKit(this.champions.version, e.id, this.cacheDir))),
+    ]);
+    const inGame = this.phase === 'inGame';
+    const champions: TipChampion[] = entries.map(({ e, relation }, i) => ({
+      name: e.name,
+      relation,
+      role: e.role,
+      kit: kits[i],
+      ...(inGame ? this.liveState.get(e.id) : {}),
+    }));
     const ctx: TipContext = {
-      phase: this.phase === 'inGame' ? 'inGame' : 'champSelect',
-      me: { champion: me?.name ?? null, role: me?.role ?? null },
-      target: {
-        champion: target.name,
-        relation: this.roster.enemies.includes(target) ? 'enemy' : 'ally',
-        role: target.role,
-        kit,
-      },
-      allies: this.roster.allies.map((e) => e.name),
-      enemies: this.roster.enemies.map((e) => e.name),
-      gameTime: this.gameTime,
+      phase: inGame ? 'inGame' : 'champSelect',
+      gameTime: inGame ? this.gameTime : undefined,
+      myGold: inGame ? this.myGold : undefined,
+      champions,
+      target: target.e.name,
+      itemCatalog,
     };
     return this.ai.tip(ctx);
   }
@@ -163,12 +177,19 @@ export class Coach extends EventEmitter {
 
     const allies: RosterEntry[] = [];
     const enemies: RosterEntry[] = [];
+    this.liveState.clear();
     for (const p of data.allPlayers) {
       const c = this.champions.fromRawName(p.rawChampionName);
       if (!c || !myTeam) continue;
       const entry = this.entry(c, toLane(p.position), p === me);
       (p.team === myTeam ? allies : enemies).push(entry);
+      this.liveState.set(c.id, {
+        level: p.level,
+        kda: p.scores ? `${p.scores.kills}/${p.scores.deaths}/${p.scores.assists}` : undefined,
+        items: (p.items ?? []).filter((i) => !i.consumable).map((i) => i.displayName),
+      });
     }
+    this.myGold = data.activePlayer.currentGold;
     this.setRoster({ allies, enemies });
 
     const enemyChamps = enemies.map((e) => this.champions.find(e.id)).filter((c): c is ChampionInfo => !!c);

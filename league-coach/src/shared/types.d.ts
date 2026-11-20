@@ -45,11 +45,17 @@ interface Roster {
   enemies: RosterEntry[];
 }
 
+type VoiceOutput =
+  | { kind: 'audio'; id: number; samples: Float32Array; sampleRate: number; interrupt: boolean }
+  | { kind: 'system'; text: string; interrupt: boolean; speed: number }
+  | { kind: 'stop' };
+
 interface CoachApi {
   onPhase(cb: (phase: CoachPhase) => void): void;
   onDraft(cb: (advice: DraftAdvice | null) => void): void;
   onGame(cb: (advice: GameAdvice) => void): void;
-  onSpeak(cb: (text: string) => void): void;
+  /** Speech from the main process: Kokoro audio chunks, text for the Windows voice, or stop. */
+  onVoice(cb: (output: VoiceOutput) => void): void;
   onStatus(cb: (text: string) => void): void;
   onRoster(cb: (roster: Roster) => void): void;
   /** Asks the AI about a champion in the current roster; resolves to the tip text. */

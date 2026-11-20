@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.12.0",
+    "kokoro-js": "^1.2.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
@@ -33,6 +34,10 @@
       "dist/**/*",
       "static/**/*",
       "config.example.json"
+    ],
+    "asarUnpack": [
+      "node_modules/onnxruntime-node/**",
+      "node_modules/kokoro-js/voices/**"
     ],
     "win": {
       "target": "nsis"
