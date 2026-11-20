@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>League Coach</title>
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <aside id="panel">
+      <header>League Coach <span id="phase">idle</span></header>
+      <section id="draft" hidden>
+        <h2>Ban suggestions</h2>
+        <ul id="bans"></ul>
+        <h2>Pick suggestions</h2>
+        <ul id="picks"></ul>
+        <ul id="draft-notes" class="notes"></ul>
+      </section>
+      <section id="game" hidden>
+        <h2>Objectives</h2>
+        <ul id="timers"></ul>
+        <p id="skill" class="highlight"></p>
+        <h2>Build reminders</h2>
+        <ul id="builds" class="notes"></ul>
+      </section>
+      <footer id="status"></footer>
+    </aside>
+    <script src="../dist/renderer/overlay.js"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "pools": {
+    "middle": ["Ahri", "Syndra", "Orianna"],
+    "bottom": ["Jinx", "Caitlyn"]
+  },
+  "bans": {
+    "middle": ["Zed", "Yasuo"],
+    "bottom": ["Draven"]
+  },
+  "voice": true,
+  "toggleHotkey": "CommandOrControl+Shift+L"
+}

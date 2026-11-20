@@ -1,0 +1,30 @@
+import { promises as fs } from 'fs';
+import * as path from 'path';
+import type { DraftConfig } from '../core/draft';
+
+export interface CoachConfig extends DraftConfig {
+  voice: boolean;
+  toggleHotkey: string;
+}
+
+const DEFAULTS: CoachConfig = {
+  pools: {},
+  bans: {},
+  voice: true,
+  toggleHotkey: 'CommandOrControl+Shift+L',
+};
+
+/**
+ * Reads config.json from the app's user-data folder
+ * (%APPDATA%\league-coach\config.json), creating it from config.example.json on first run.
+ */
+export async function loadConfig(userDataDir: string, examplePath: string): Promise<{ config: CoachConfig; file: string }> {
+  const file = path.join(userDataDir, 'config.json');
+  let raw = await fs.readFile(file, 'utf8').catch(() => null);
+  if (raw === null) {
+    raw = await fs.readFile(examplePath, 'utf8').catch(() => '{}');
+    await fs.mkdir(userDataDir, { recursive: true });
+    await fs.writeFile(file, raw);
+  }
+  return { config: { ...DEFAULTS, ...(JSON.parse(raw) as Partial<CoachConfig>) }, file };
+}
