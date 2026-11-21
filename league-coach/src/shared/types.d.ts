@@ -64,6 +64,21 @@ interface CoachApi {
   setInteractive(interactive: boolean): void;
 }
 
+interface KeyStatus {
+  source: 'saved' | 'config' | 'environment' | 'embedded' | 'none';
+  masked: string;
+  model: string;
+}
+
+interface SettingsApi {
+  getStatus(): Promise<KeyStatus>;
+  /** Tests the key against the API, then saves it encrypted. Rejects if the key doesn't work. */
+  saveKey(key: string): Promise<void>;
+  removeKey(): Promise<void>;
+  openConfig(): void;
+}
+
 interface Window {
   coach: CoachApi;
+  settings: SettingsApi;
 }

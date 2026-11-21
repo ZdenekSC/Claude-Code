@@ -4,17 +4,35 @@ import { buildGameContext, buildQuestion, TIP_SYSTEM_PROMPT, TipContext, tipCach
 export interface AiSettings {
   /** Claude model id. */
   model: string;
-  /** Optional; otherwise ANTHROPIC_API_KEY (or an `ant auth login` profile) is used. */
-  apiKey?: string;
+  /** Read on every request, so a key saved in Settings takes effect immediately. */
+  getApiKey: () => string | undefined;
 }
 
 /** Turns a clicked champion into a short spoken tip using Claude. */
 export class AiCoach {
-  private readonly client: Anthropic;
+  private client: Anthropic | null = null;
+  private clientKey: string | undefined;
   private readonly cache = new Map<string, Promise<string>>();
 
-  constructor(private readonly settings: AiSettings) {
-    this.client = new Anthropic(settings.apiKey ? { apiKey: settings.apiKey } : {});
+  constructor(private readonly settings: AiSettings) {}
+
+  private getClient(): Anthropic {
+    const key = this.settings.getApiKey();
+    if (!key) throw new Error(NO_KEY_MESSAGE);
+    if (!this.client || key !== this.clientKey) {
+      this.client = new Anthropic({ apiKey: key });
+      this.clientKey = key;
+    }
+    return this.client;
+  }
+
+  /** Cheap check used by Settings: lists models, which costs nothing. */
+  static async testKey(key: string): Promise<void> {
+    try {
+      await new Anthropic({ apiKey: key.trim() }).models.list({ limit: 1 });
+    } catch (error) {
+      throw new Error(describeError(error));
+    }
   }
 
   /** Call when a new game or champion select starts. */
@@ -35,7 +53,7 @@ export class AiCoach {
 
   private async request(ctx: TipContext): Promise<string> {
     try {
-      const response = await this.client.beta.messages.create({
+      const response = await this.getClient().beta.messages.create({
         model: this.settings.model,
         max_tokens: 4000,
         // Short factual tips: low effort keeps them fast and cheap.
@@ -64,13 +82,18 @@ export class AiCoach {
       if (!text) throw new Error('Empty response');
       return text;
     } catch (error) {
-      if (error instanceof Anthropic.AuthenticationError) {
-        throw new Error('AI tips need an Anthropic API key: set ANTHROPIC_API_KEY or "ai.apiKey" in config.json.');
-      }
-      if (error instanceof Anthropic.RateLimitError) throw new Error('AI is rate limited — try again in a moment.');
-      if (error instanceof Anthropic.APIConnectionError) throw new Error('Could not reach the AI service — check your connection.');
-      if (error instanceof Anthropic.APIError) throw new Error(`AI error ${error.status ?? ''}: ${error.message}`);
-      throw error;
+      throw new Error(describeError(error));
     }
   }
+}
+
+const NO_KEY_MESSAGE = 'AI tips need an Anthropic API key: press Ctrl+Shift+S (or the tray icon → Settings) to add one.';
+
+function describeError(error: unknown): string {
+  if (error instanceof Anthropic.AuthenticationError) return `That API key was rejected. ${NO_KEY_MESSAGE}`;
+  if (error instanceof Anthropic.PermissionDeniedError) return 'This API key is not allowed to use the model; check your Anthropic Console.';
+  if (error instanceof Anthropic.RateLimitError) return 'AI is rate limited (or out of credits). Try again in a moment, or check Billing in the Anthropic Console.';
+  if (error instanceof Anthropic.APIConnectionError) return 'Could not reach the AI service. Check your internet connection.';
+  if (error instanceof Anthropic.APIError) return `AI error ${error.status ?? ''}: ${error.message}`;
+  return error instanceof Error ? error.message : String(error);
 }

@@ -1,0 +1,45 @@
+# Builds the League Coach Windows installer on a real Windows machine,
+# so native parts (ONNX Runtime, sharp) are the Windows versions.
+# Download it from the run's "Artifacts" section.
+name: League Coach installer
+
+on:
+  push:
+    paths:
+      - 'league-coach/**'
+      - '.github/workflows/league-coach.yml'
+  workflow_dispatch:
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: league-coach
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: league-coach/package-lock.json
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Build installer
+        run: npm run dist
+        env:
+          # Optional: add a repository secret with this name to build your key into the installer.
+          # Without it, the app asks for the key in its Settings window on first run.
+          LEAGUE_COACH_API_KEY: ${{ secrets.LEAGUE_COACH_API_KEY }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: League-Coach-Setup
+          path: league-coach/release/*.exe
+          if-no-files-found: error
+          retention-days: 30

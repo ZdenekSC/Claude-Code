@@ -14,6 +14,16 @@ A Windows overlay for League of Legends that:
   - In game, each tip ends with **one next item** chosen for the whole enemy team and what they're building.
 - **Natural voice:** callouts and tips are read by Kokoro, a neural voice that runs locally and for free. It falls back to the Windows voice.
 
+## Install (players)
+
+1. On GitHub, open **Actions → League Coach installer**, click the latest green run and download **League-Coach-Setup** under *Artifacts*. Unzip it to get `League Coach Setup x.y.z.exe`.
+2. Run it. The installer isn't code-signed, so Windows SmartScreen will warn you: click **More info → Run anyway**.
+3. On first start, the **Settings** window opens. Paste your Anthropic API key and click **Test & save**.
+4. Set League to **Borderless** (Settings → Video → Window Mode).
+5. The app lives in the system tray (bottom right). Right-click it for Settings, Show/hide overlay, and Quit.
+
+The first start also downloads the Kokoro voice model (~90 MB). The Windows voice is used until it finishes.
+
 ## Requirements
 
 - Windows 10/11 and Node.js 20+

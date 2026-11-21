@@ -11,7 +11,7 @@
     "mock": "node scripts/mock-live-client.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dist": "npm run build && electron-builder --win"
+    "dist": "npm run build && node scripts/embed-key.mjs && electron-builder --win"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.12.0",
@@ -33,14 +33,36 @@
     "files": [
       "dist/**/*",
       "static/**/*",
-      "config.example.json"
+      "config.example.json",
+      "!dist/**/*.map",
+      "!node_modules/onnxruntime-node/bin/napi-v3/linux/**",
+      "!node_modules/onnxruntime-node/bin/napi-v3/darwin/**"
     ],
     "asarUnpack": [
       "node_modules/onnxruntime-node/**",
       "node_modules/kokoro-js/voices/**"
     ],
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "static/icon.png"
+    },
+    "npmRebuild": false,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "League Coach"
+    },
+    "directories": {
+      "output": "release"
     }
-  }
+  },
+  "author": "League Coach"
 }

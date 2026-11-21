@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>League Coach — Settings</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <main>
+      <h1>League Coach</h1>
+
+      <section>
+        <h2>Anthropic API key</h2>
+        <p class="muted">Needed for AI tips. Create one at console.anthropic.com → API Keys. It's stored encrypted on this PC.</p>
+        <p id="key-status" class="status"></p>
+        <form id="key-form">
+          <label for="key">New key</label>
+          <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" />
+          <div class="row">
+            <button type="submit">Test &amp; save</button>
+            <button type="button" id="remove" class="secondary">Remove saved key</button>
+          </div>
+        </form>
+        <p id="key-result" class="result" role="status"></p>
+      </section>
+
+      <section>
+        <h2>Champions, bans and voice</h2>
+        <p class="muted">Your champion pool, ban list, voice and model live in config.json. Restart the app after editing.</p>
+        <div class="row">
+          <button type="button" id="open-config" class="secondary">Open config.json</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Hotkeys</h2>
+        <p class="muted"><kbd>Ctrl+Shift+L</kbd> show or hide the overlay · <kbd>Ctrl+Shift+S</kbd> settings · <kbd>Ctrl+Shift+Q</kbd> quit</p>
+      </section>
+    </main>
+    <script src="../dist/renderer/settings.js"></script>
+  </body>
+</html>
