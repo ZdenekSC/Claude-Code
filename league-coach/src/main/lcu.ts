@@ -1,6 +1,7 @@
 import { execFile } from 'child_process';
 import { EventEmitter } from 'events';
 import { promises as fs } from 'fs';
+import * as https from 'https';
 import WebSocket from 'ws';
 
 /** Connection details for the League Client's local API (LCU). */
@@ -57,12 +58,45 @@ const PHASE_EVENT = 'OnJsonApiEvent_lol-gameflow_v1_gameflow-phase';
  */
 export class LcuWatcher extends EventEmitter {
   private socket: WebSocket | null = null;
+  private creds: LcuCredentials | null = null;
   private retryTimer: NodeJS.Timeout | null = null;
   private stopped = false;
 
   start(): void {
     this.stopped = false;
     void this.connect();
+  }
+
+  /** GET a League Client API endpoint (only while connected). Resolves null on any failure. */
+  get<T>(path: string, timeoutMs = 5000): Promise<T | null> {
+    const creds = this.creds;
+    if (!creds || !this.socket) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const req = https.get(
+        {
+          host: '127.0.0.1',
+          port: creds.port,
+          path,
+          headers: { Authorization: `Basic ${Buffer.from(`riot:${creds.password}`).toString('base64')}`, Accept: 'application/json' },
+          rejectUnauthorized: false, // the client's self-signed certificate, on 127.0.0.1 only
+        },
+        (res) => {
+          let body = '';
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => (body += chunk));
+          res.on('end', () => {
+            if (res.statusCode !== 200) return resolve(null);
+            try {
+              resolve(JSON.parse(body) as T);
+            } catch {
+              resolve(null);
+            }
+          });
+        },
+      );
+      req.setTimeout(timeoutMs, () => req.destroy());
+      req.on('error', () => resolve(null));
+    });
   }
 
   stop(): void {
@@ -80,6 +114,7 @@ export class LcuWatcher extends EventEmitter {
     const creds = await findClient();
     if (!creds) return this.scheduleRetry();
 
+    this.creds = creds;
     const auth = Buffer.from(`riot:${creds.password}`).toString('base64');
     // The client uses a self-signed certificate on 127.0.0.1 only.
     const socket = new WebSocket(`wss://127.0.0.1:${creds.port}/`, 'wamp', {

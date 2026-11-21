@@ -140,7 +140,7 @@ async function main(): Promise<void> {
     return tip;
   });
   coach.on('speak', (text: string) => voice.say(text));
-  for (const channel of ['phase', 'draft', 'game', 'roster', 'status']) {
+  for (const channel of ['phase', 'draft', 'draftAi', 'game', 'roster', 'status']) {
     coach.on(channel, (payload) => send(channel, payload));
   }
   coach.start();

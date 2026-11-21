@@ -1,12 +1,6 @@
 {
-  "pools": {
-    "middle": ["Ahri", "Syndra", "Orianna"],
-    "bottom": ["Jinx", "Caitlyn"]
-  },
-  "bans": {
-    "middle": ["Zed", "Yasuo"],
-    "bottom": ["Draven"]
-  },
+  "pools": {},
+  "bans": {},
   "voice": true,
   "voiceEngine": "kokoro",
   "kokoroVoice": "af_heart",

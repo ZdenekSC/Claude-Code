@@ -111,3 +111,24 @@ describe('tip prompt', () => {
     expect(tipCacheKey(ctx)).not.toBe(tipCacheKey(bought));
   });
 });
+
+describe('draft prompt', () => {
+  it('lists pool with evidence, nemeses, picks and bans', async () => {
+    const { buildDraftPrompt } = await import('./tips');
+    const text = buildDraftPrompt({
+      stage: 'pick',
+      role: 'middle',
+      myPool: [{ name: 'Ahri', reason: '8 recent games, 75% wins' }],
+      nemeses: [{ name: 'Yasuo', reason: 'Beat you 3 of 3 times in lane' }],
+      allies: [{ name: 'Garen', role: 'top' }],
+      enemies: ['Zed'],
+      banned: [],
+    });
+    expect(text).toContain('Stage: my pick is now.');
+    expect(text).toContain('My champion pool: Ahri (8 recent games, 75% wins).');
+    expect(text).toContain('Lane opponents who beat me most: Yasuo (Beat you 3 of 3 times in lane).');
+    expect(text).toContain('My team so far: Garen (top).');
+    expect(text).toContain('Enemy team so far: Zed.');
+    expect(text).toContain('Banned: none yet.');
+  });
+});

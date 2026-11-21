@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseCommandLine, parseLockfile } from '../main/lcu';
 import { buildTips } from './builds';
-import { ChampSelectSession, suggestDraft } from './draft';
+import { ChampSelectSession, DraftCandidates, mergeCandidates, suggestDraft } from './draft';
 import { testIndex } from './fixtures';
 import { CalloutTracker, computeTimers, formatClock, LiveEvent } from './objectives';
 import { nextSkill, skillTip } from './skills';
@@ -27,9 +27,17 @@ describe('champion lookup', () => {
 });
 
 describe('draft suggestions', () => {
-  const config = {
-    pools: { middle: ['Ahri', 'Syndra', 'Lissandra'] },
-    bans: { middle: ['Zed', 'Yasuo', 'Syndra'] },
+  const candidates: DraftCandidates = {
+    pool: [
+      { key: 103, reason: '12 recent games, 67% wins' }, // Ahri
+      { key: 134, reason: '5 recent games, 60% wins' }, // Syndra
+      { key: 127, reason: '3 recent games, 33% wins' }, // Lissandra
+    ],
+    bans: [
+      { key: 238, reason: 'Beat you 3 of 4 times in lane' }, // Zed
+      { key: 157, reason: 'Beat you 2 of 2 times in lane' }, // Yasuo
+      { key: 134, reason: 'Beat you 1 of 3 times in lane' }, // Syndra
+    ],
   };
   const counters = { Zed: ['Lissandra'] };
 
@@ -55,14 +63,21 @@ describe('draft suggestions', () => {
       ],
       actions: [[{ actorCellId: 7, championId: 157, completed: true, type: 'ban' }]], // Yasuo banned
     });
-    const advice = suggestDraft(s, testIndex, config, counters);
+    const advice = suggestDraft(s, testIndex, candidates, counters);
     expect(advice.role).toBe('middle');
-    expect(advice.bans.map((b) => b.champion)).toEqual(['Zed']);
+    expect(advice.bans).toEqual([{ champion: 'Zed', score: 3, reasons: ['Beat you 3 of 4 times in lane'] }]);
+  });
+
+  it('puts config.json overrides before automatic candidates, without duplicates', () => {
+    const merged = mergeCandidates(testIndex, { pools: { middle: ['Lissandra', 'Wukong'] }, bans: {} }, 'middle', candidates);
+    expect(merged.pool.map((c) => c.key)).toEqual([127, 62, 103, 134]);
+    expect(merged.pool[0].reason).toBe('From your config.json');
+    expect(merged.bans).toEqual(candidates.bans);
   });
 
   it('ranks a counter pick above comfort', () => {
     const s = session({ theirTeam: [{ cellId: 5, championId: 238 }] }); // enemy Zed
-    const advice = suggestDraft(s, testIndex, config, counters);
+    const advice = suggestDraft(s, testIndex, candidates, counters);
     expect(advice.picks[0].champion).toBe('Lissandra');
     expect(advice.picks[0].reasons).toContain('Good into Zed');
   });
@@ -76,7 +91,7 @@ describe('draft suggestions', () => {
         { cellId: 2, championId: 0, assignedPosition: 'middle' },
       ],
     });
-    const advice = suggestDraft(s, testIndex, { pools: { middle: ['Zed', 'Ahri'] }, bans: {} }, {});
+    const advice = suggestDraft(s, testIndex, { pool: [{ key: 238, reason: 'a' }, { key: 103, reason: 'b' }], bans: [] }, {});
     expect(advice.notes.join(' ')).toMatch(/mostly physical/);
     expect(advice.picks[0].champion).toBe('Ahri');
   });

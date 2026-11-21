@@ -20,14 +20,26 @@ export interface ChampSelectAction {
   actorCellId: number;
   championId: number;
   completed: boolean;
+  isInProgress?: boolean;
   type: string; // "ban" | "pick" | ...
 }
 
 export interface DraftConfig {
-  /** Champions you play per role, most comfortable first. Ids or display names. */
+  /** Optional overrides: champions to always consider per role, most comfortable first. Ids or names. */
   pools: Partial<Record<Lane, string[]>>;
-  /** Champions you'd like banned per role, highest priority first. */
+  /** Optional overrides: champions you always want banned per role. */
   bans: Partial<Record<Lane, string[]>>;
+}
+
+/** A champion to consider, with why (e.g. "12 recent games, 67% wins"). Ordered best first. */
+export interface DraftCandidate {
+  key: number; // numeric champion id
+  reason: string;
+}
+
+export interface DraftCandidates {
+  pool: DraftCandidate[];
+  bans: DraftCandidate[];
 }
 
 /** enemy champion id -> champions that do well against it. */
@@ -39,18 +51,42 @@ function toLane(position: string | undefined): Lane | null {
   return LANES.includes(position as Lane) ? (position as Lane) : null;
 }
 
-function resolveAll(index: ChampionIndex, names: string[] | undefined): ChampionInfo[] {
-  return (names ?? []).map((n) => index.find(n)).filter((c): c is ChampionInfo => !!c);
+/** The local player's assigned role ('' in blind pick → null). */
+export function myRole(session: ChampSelectSession): Lane | null {
+  return toLane(session.myTeam.find((m) => m.cellId === session.localPlayerCellId)?.assignedPosition);
+}
+
+/** config.json overrides first, then the automatic candidates, without duplicates. */
+export function mergeCandidates(
+  index: ChampionIndex,
+  config: DraftConfig,
+  role: Lane | null,
+  auto: DraftCandidates,
+): DraftCandidates {
+  const roles = role ? [role] : LANES;
+  const fromConfig = (lists: Partial<Record<Lane, string[]>>): DraftCandidate[] =>
+    roles
+      .flatMap((r) => lists[r] ?? [])
+      .map((n) => index.find(n))
+      .filter((c): c is ChampionInfo => !!c)
+      .map((c) => ({ key: c.key, reason: 'From your config.json' }));
+  const dedupe = (list: DraftCandidate[]) => {
+    const seen = new Set<number>();
+    return list.filter((c) => (seen.has(c.key) ? false : (seen.add(c.key), true)));
+  };
+  return {
+    pool: dedupe([...fromConfig(config.pools), ...auto.pool]),
+    bans: dedupe([...fromConfig(config.bans), ...auto.bans]),
+  };
 }
 
 export function suggestDraft(
   session: ChampSelectSession,
   index: ChampionIndex,
-  config: DraftConfig,
+  candidates: DraftCandidates,
   counters: CounterTable,
 ): DraftAdvice {
-  const me = session.myTeam.find((m) => m.cellId === session.localPlayerCellId);
-  const role = toLane(me?.assignedPosition);
+  const role = myRole(session);
 
   // Everything already banned or locked in is unavailable.
   const unavailable = new Set<number>();
@@ -72,13 +108,16 @@ export function suggestDraft(
     .map((m) => index.byKey.get(m.championId))
     .filter((c): c is ChampionInfo => !!c);
 
-  const free = (c: ChampionInfo) => !unavailable.has(c.key) && !allyIntents.has(c.key);
-  const roles = role ? [role] : LANES;
+  const free = (key: number) => !unavailable.has(key) && !allyIntents.has(key);
+  const resolve = (list: DraftCandidate[]) =>
+    list
+      .filter((c) => free(c.key))
+      .map((c) => ({ champ: index.byKey.get(c.key), reason: c.reason }))
+      .filter((c): c is { champ: ChampionInfo; reason: string } => !!c.champ);
 
-  const bans: Suggestion[] = dedupe(roles.flatMap((r) => resolveAll(index, config.bans[r])))
-    .filter(free)
+  const bans: Suggestion[] = resolve(candidates.bans)
     .slice(0, 3)
-    .map((c, i) => ({ champion: c.name, score: 3 - i, reasons: [role ? `Your ${role} ban list` : 'Your ban list'] }));
+    .map(({ champ, reason }, i) => ({ champion: champ.name, score: 3 - i, reasons: [reason] }));
 
   const allyAp = allies.filter(isMagicDamage).length;
   const allyAd = allies.length - allyAp;
@@ -88,12 +127,11 @@ export function suggestDraft(
   if (allies.length >= 2 && allyAp - allyAd >= 2) notes.push('Your team is mostly magic damage — physical damage picks are favored.');
   if (allies.length >= 3 && !allyHasTank) notes.push('Your team has no tank yet.');
 
-  const pool = dedupe(roles.flatMap((r) => resolveAll(index, config.pools[r]))).filter(free);
+  const pool = resolve(candidates.pool);
   const picks: Suggestion[] = pool
-    .map((c, i) => {
-      const reasons: string[] = [];
-      let score = Math.max(0, 2 - i * 0.25); // comfort: earlier in your pool = more comfortable
-      if (i === 0) reasons.push('Your most comfortable pick');
+    .map(({ champ: c, reason }, i) => {
+      const reasons: string[] = [reason];
+      let score = Math.max(0, 2 - i * 0.25); // comfort: candidates come best first
 
       const beats = enemies.filter((e) => (counters[e.id] ?? []).some((x) => index.find(x)?.id === c.id));
       if (beats.length) {
@@ -117,12 +155,7 @@ export function suggestDraft(
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 
-  if (!pool.length) notes.push(`Add champions to your ${role ?? ''} pool in config.json to get pick suggestions.`.replace('  ', ' '));
+  if (!pool.length) notes.push('No match history for this role yet: play a few games, or add champions to config.json.');
 
   return { role, bans, picks, notes };
-}
-
-function dedupe(list: ChampionInfo[]): ChampionInfo[] {
-  const seen = new Set<string>();
-  return list.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
 }

@@ -84,8 +84,16 @@
   }
 
   window.coach.onPhase((phase) => {
+    if (phase !== 'champSelect') $('draft-ai').hidden = true;
     $('phase').textContent = phase === 'champSelect' ? 'champ select' : phase === 'inGame' ? 'in game' : 'idle';
     showSection(phase === 'champSelect' ? 'draft' : phase === 'inGame' ? 'game' : null);
+  });
+
+  window.coach.onDraftAi((advice) => {
+    const el = $('draft-ai');
+    el.hidden = false;
+    el.className = advice.error ? 'tip error' : 'tip';
+    el.textContent = advice.error ? advice.text.replace(/^.*?Error: /, '') : `AI ${advice.stage === 'ban' ? 'ban' : 'pick'}: ${advice.text}`;
   });
 
   window.coach.onDraft((advice) => {

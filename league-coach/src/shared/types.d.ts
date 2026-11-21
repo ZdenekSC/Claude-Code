@@ -32,6 +32,12 @@ interface GameAdvice {
   skillTip: string | null;
 }
 
+interface DraftAiAdvice {
+  stage: 'ban' | 'pick';
+  text: string;
+  error: boolean;
+}
+
 interface RosterEntry {
   id: string; // Data Dragon champion id
   name: string;
@@ -58,6 +64,7 @@ interface CoachApi {
   onVoice(cb: (output: VoiceOutput) => void): void;
   onStatus(cb: (text: string) => void): void;
   onRoster(cb: (roster: Roster) => void): void;
+  onDraftAi(cb: (advice: DraftAiAdvice) => void): void;
   /** Asks the AI about a champion in the current roster; resolves to the tip text. */
   askTip(championId: string): Promise<string>;
   /** Overlay is click-through except while the mouse is over the panel. */

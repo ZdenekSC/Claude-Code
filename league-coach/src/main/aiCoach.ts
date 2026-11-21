@@ -1,5 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { buildGameContext, buildQuestion, TIP_SYSTEM_PROMPT, TipContext, tipCacheKey } from '../core/tips';
+import {
+  buildDraftPrompt,
+  buildGameContext,
+  buildQuestion,
+  DRAFT_SYSTEM_PROMPT,
+  DraftContext,
+  TIP_SYSTEM_PROMPT,
+  TipContext,
+  tipCacheKey,
+} from '../core/tips';
 
 export interface AiSettings {
   /** Claude model id. */
@@ -51,29 +60,37 @@ export class AiCoach {
     return pending;
   }
 
-  private async request(ctx: TipContext): Promise<string> {
+  /** Draft advice for champion select (not cached: the draft changes every time it's asked). */
+  async draft(ctx: DraftContext): Promise<string> {
+    return this.complete(DRAFT_SYSTEM_PROMPT, [{ type: 'text', text: buildDraftPrompt(ctx) }], 'your draft');
+  }
+
+  private request(ctx: TipContext): Promise<string> {
+    return this.complete(
+      TIP_SYSTEM_PROMPT,
+      [
+        // Same for every click in a game (all kits + item list): cached, so repeat clicks cost far less.
+        { type: 'text', text: buildGameContext(ctx), cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: buildQuestion(ctx) },
+      ],
+      ctx.target,
+    );
+  }
+
+  private async complete(system: string, content: Anthropic.Beta.BetaContentBlockParam[], subject: string): Promise<string> {
     try {
       const response = await this.getClient().beta.messages.create({
         model: this.settings.model,
         max_tokens: 4000,
-        // Short factual tips: low effort keeps them fast and cheap.
+        // Short factual advice: low effort keeps it fast and cheap.
         output_config: { effort: 'low' },
         // If the model declines, the API retries on a fallback model in the same call.
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        system: TIP_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              // Same for every click in a game (all kits + item list): cached, so repeat clicks cost far less.
-              { type: 'text', text: buildGameContext(ctx), cache_control: { type: 'ephemeral' } },
-              { type: 'text', text: buildQuestion(ctx) },
-            ],
-          },
-        ],
+        system,
+        messages: [{ role: 'user', content }],
       });
-      if (response.stop_reason === 'refusal') return `No tip available for ${ctx.target} right now.`;
+      if (response.stop_reason === 'refusal') return `No advice available for ${subject} right now.`;
       const text = response.content
         .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
         .map((b) => b.text)

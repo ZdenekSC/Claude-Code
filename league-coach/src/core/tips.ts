@@ -128,3 +128,40 @@ export function tipCacheKey(ctx: TipContext): string {
   const state = ctx.champions.map((c) => `${c.name}:${(c.items ?? []).join('+')}`).join(',');
   return [ctx.phase, ctx.target, state].join('|');
 }
+
+/** Champion select: what the AI sees for one draft suggestion. */
+export interface DraftContext {
+  stage: 'ban' | 'pick';
+  role: Lane | null;
+  /** The player's own champions with evidence, best first (from match history / mastery). */
+  myPool: Array<{ name: string; reason: string }>;
+  /** Lane opponents who beat the player most often. */
+  nemeses: Array<{ name: string; reason: string }>;
+  allies: Array<{ name: string; role: Lane | null }>;
+  enemies: string[];
+  banned: string[];
+}
+
+export const DRAFT_SYSTEM_PROMPT = `You are a League of Legends draft coach speaking to a player through a voice overlay during champion select.
+
+Ban stage: suggest one ban, preferring a strong lane opponent for their role, especially one listed as beating them often, and say why in a few words. Then name the pick from their pool you'd plan around.
+Pick stage: suggest the best pick from their own pool given both teams' picks (counters to their likely lane opponent, team damage mix, frontline, synergy with allies), with a short reason, and one backup.
+
+Rules:
+- Prefer champions from the player's pool; suggest a champion outside it only if nothing in the pool fits, and say so.
+- Never suggest a champion that is banned or already picked.
+- At most 2 short sentences, under 40 words. Read aloud: plain spoken English, no markdown or lists.`;
+
+export function buildDraftPrompt(ctx: DraftContext): string {
+  const list = (items: Array<{ name: string; reason: string }>) =>
+    items.length ? items.map((i) => `${i.name} (${i.reason})`).join('; ') : 'none known';
+  return [
+    `Stage: ${ctx.stage === 'ban' ? 'ban phase' : 'my pick is now'}.`,
+    `My role: ${ctx.role ?? 'unknown (blind pick)'}.`,
+    `My champion pool: ${list(ctx.myPool)}.`,
+    `Lane opponents who beat me most: ${list(ctx.nemeses)}.`,
+    `My team so far: ${ctx.allies.map((a) => `${a.name}${a.role ? ` (${a.role})` : ''}`).join(', ') || 'nobody locked in'}.`,
+    `Enemy team so far: ${ctx.enemies.join(', ') || 'nobody locked in'}.`,
+    `Banned: ${ctx.banned.join(', ') || 'none yet'}.`,
+  ].join('\n');
+}

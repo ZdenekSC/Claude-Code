@@ -13,6 +13,7 @@ const api: CoachApi = {
   onVoice: listen<VoiceOutput>('voice'),
   onStatus: listen<string>('status'),
   onRoster: listen<Roster>('roster'),
+  onDraftAi: listen<DraftAiAdvice>('draftAi'),
   askTip: (championId) => ipcRenderer.invoke('askTip', championId) as Promise<string>,
   setInteractive: (interactive) => ipcRenderer.send('interactive', interactive),
 };

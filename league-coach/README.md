@@ -2,7 +2,8 @@
 
 A Windows overlay for League of Legends that:
 
-- **Champion select:** suggests bans and picks from your own champion pool, with reasons (counters, team damage balance, missing frontline).
+- **Champion select (automatic):** learns your champion pool per role from your own match history (last ~60 Summoner's Rift games) and champion mastery. It suggests picks you actually play and can pick right now, and bans the lane opponents who beat you most often. Each suggestion comes with its reason, e.g. "8 recent games, 75% wins" or "Beat you 3 of 3 times in lane".
+- **AI draft advice:** when your ban turn and your pick turn start, the AI suggests a ban or a pick from your pool, taking both teams' picks into account, and says it out loud.
 - **In game:** shows objective timers (Dragon / Elder, Voidgrubs, Rift Herald, Atakhan, Baron) with voice callouts one minute before a spawn and when it spawns.
 - **In game:** reminds you which item categories fit the enemy team (magic resist vs armor, anti-heal, penetration).
 - **In game:** suggests which skill to level next, using a common max order for your champion.
@@ -19,7 +20,7 @@ A Windows overlay for League of Legends that:
 1. On GitHub, open **Actions → League Coach installer**, click the latest green run and download **League-Coach-Setup** under *Artifacts*. Unzip it to get `League Coach Setup x.y.z.exe`.
 2. Run it. The installer isn't code-signed, so Windows SmartScreen will warn you: click **More info → Run anyway**.
 3. On first start, the **Settings** window opens. Paste your Anthropic API key and click **Test & save**.
-4. Set League to **Borderless** (Settings → Video → Window Mode).
+4. Set League to **Borderless** (Settings → Video → Window Mode). That's it: your champions are learned automatically from your match history.
 5. The app lives in the system tray (bottom right). Right-click it for Settings, Show/hide overlay, and Quit.
 
 The first start also downloads the Kokoro voice model (~90 MB). The Windows voice is used until it finishes.
@@ -93,13 +94,14 @@ npm run dist         # builds a Windows installer in dist/ (electron-builder)
 
 | Source | Used for |
 |---|---|
-| League Client API (LCU): local WebSocket, credentials taken from the client process or its `lockfile` | Champion-select session: picks, bans, hovers, your role |
+| League Client API (LCU): local WebSocket + HTTP, credentials taken from the client process or its `lockfile` | Champion-select session (picks, bans, hovers, your role, pickable champions); your own match history and champion mastery |
 | Live Client Data API (`https://127.0.0.1:2999`, only during a game) | Game time, objective kill events, your level and ability ranks, both teams' champions |
 | Data Dragon (`ddragon.leagueoflegends.com`) | Champion names, ids, tags, damage ratings, ability descriptions and portraits. Cached for offline use. |
 | Anthropic API (Claude) | AI tips when you click a champion |
 
 ```
 src/core/       coaching logic (pure, unit-tested)
+  profile.ts      your pool and nemeses per role, learned from match history + mastery
   draft.ts        pick and ban scoring
   objectives.ts   spawn timers and voice callouts  <- update OBJECTIVE_TIMINGS when Riot changes them
   builds.ts       item-category reminders
@@ -125,7 +127,8 @@ The design follows Riot's third-party app rules as publicly reported (verify on 
 
 ## Known gaps / next steps
 
-- `counters.json` and `skill-orders.json` hold only examples. Fill them in, or generate them from match data.
+- `skill-orders.json` holds only a few examples (the AI tips cover skill advice in more depth). `counters.json` is a small optional table. The AI draft advice handles counterpicks.
+- Match history roles come from the client's lane/role data, which can be wrong in some games (e.g. lane swaps). Those games are still counted for the champion.
 - Spawn timings in `objectives.ts` must be checked each season.
 - Event names for Voidgrubs and Atakhan kills (`HordeKill`, `AtakhanKill`) are unverified. Until confirmed, those timers hide 4 minutes after spawning.
 - AI tips can be wrong. They're grounded in Data Dragon ability text, but they can still misjudge a matchup.
