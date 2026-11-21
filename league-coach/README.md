@@ -43,7 +43,7 @@ npm start
 | `Ctrl+Shift+L` | Show / hide the overlay |
 | `Ctrl+Shift+Q` | Quit |
 
-On first run the app creates `%APPDATA%\league-coach\config.json` from `config.example.json`. Fill in your champion pool and ban list per role (`top`, `jungle`, `middle`, `bottom`, `utility`). Data Dragon ids (`MonkeyKing`) and display names (`Wukong`) both work.
+Your champions are learned automatically. Optionally, `%APPDATA%\league-coach\config.json` (tray → Settings → Open config.json) lets you *add* champions to always consider (`pools`) or always ban (`bans`) per role (`top`, `jungle`, `middle`, `bottom`, `utility`). These come before the automatic suggestions. Data Dragon ids (`MonkeyKing`) and display names (`Wukong`) both work.
 
 ### AI tips setup
 
